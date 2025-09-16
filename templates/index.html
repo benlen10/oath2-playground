@@ -3,25 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Current Time</title>
+    <title>Time & TOTP Generator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            padding: 1rem;
         }
-        .time-container {
+        .container {
             text-align: center;
             background: white;
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            width: 100%;
+            max-width: 400px;
         }
-        h1 {
+        h1, h2 {
             color: #333;
             margin-bottom: 1rem;
         }
@@ -29,13 +34,123 @@
             font-size: 2rem;
             color: #007bff;
             font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .totp-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            min-height: 2rem;
+        }
+        .totp-code {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #28a745;
+            font-family: 'Courier New', monospace;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="time-container">
+    <div class="container">
         <h1>Current Local Time</h1>
         <div class="time">{{ time }}</div>
     </div>
+
+    <div class="container">
+        <h2>TOTP Generator</h2>
+        <div class="input-group">
+            <label for="secretKey">TOTP Secret Key:</label>
+            <input type="text" id="secretKey" placeholder="Enter your TOTP secret key">
+        </div>
+        <button onclick="generateTOTP()">Generate Code</button>
+        <div id="totpResult" class="totp-result"></div>
+    </div>
+
+    <script>
+        async function generateTOTP() {
+            const secretKey = document.getElementById('secretKey').value.trim();
+            const resultDiv = document.getElementById('totpResult');
+            const button = document.querySelector('button');
+
+            if (!secretKey) {
+                resultDiv.innerHTML = '<div class="error">Please enter a secret key</div>';
+                return;
+            }
+
+            button.disabled = true;
+            resultDiv.innerHTML = 'Generating...';
+
+            try {
+                const response = await fetch('/generate_totp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ secret_key: secretKey })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="totp-code">${data.code}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        document.getElementById('secretKey').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateTOTP();
+            }
+        });
+    </script>
 </body>
 </html>
